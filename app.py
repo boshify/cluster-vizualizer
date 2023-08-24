@@ -8,6 +8,8 @@ st.title("Hierarchical Data Visualization")
 # Function to load the uploaded data
 def load_data(uploaded_file):
     df = pd.read_csv(uploaded_file)
+    # Making column names lowercase for case insensitivity
+    df.columns = [col.lower() for col in df.columns]
     return df
 
 # Upload widget
@@ -65,8 +67,18 @@ if uploaded_file:
                     networkSeries.dataFields.children = "children";
                     networkSeries.nodes.template.tooltipText = "{name}:{value}";
                     networkSeries.nodes.template.fillOpacity = 1;
-
-                    // Add other desired customizations here.
+                    
+                    // Define colors based on depth
+                    networkSeries.nodes.template.adapter.add("fill", function(fill, target) {{
+                        if (target.dataItem.level == 0) {{
+                            return am4core.color("#003366");  // Dark Blue for Clusters
+                        }} else if (target.dataItem.level == 1) {{
+                            return am4core.color("#336699");  // Medium Blue for Subclusters
+                        }} else if (target.dataItem.level == 2) {{
+                            return am4core.color("#6699CC");  // Light Blue for Pages
+                        }}
+                        return fill;
+                    }});
 
                 }});
 
