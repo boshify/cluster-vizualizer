@@ -1,86 +1,65 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import json
+import plotly.express as px
 
+# Function to check the presence of required columns in a case-insensitive manner
+def columns_present(df, columns):
+    df_columns_lower = [col.lower() for col in df.columns]
+    return all(col.lower() in df_columns_lower for col in columns)
+
+# Function to load data
+@st.cache
+def load_data(file):
+    return pd.read_csv(file)
+
+# Function to convert dataframe to hierarchical data
+def df_to_hierarchy(df):
+    hierarchical_data = []
+    for _, row in df.iterrows():
+        cluster = row['Parent']
+        subcluster = row['Cluster']
+        page = row['Page Title']
+        value = row['Type'] # Consider the 'Type' column as the value for visualization
+        
+        # Locate cluster
+        cluster_idx = next((index for (index, d) in enumerate(hierarchical_data) if d["name"] == cluster), None)
+        if cluster_idx is None:
+            hierarchical_data.append({"name": cluster, "children": []})
+            cluster_idx = len(hierarchical_data) - 1
+        
+        # Locate subcluster within cluster
+        subclusters = hierarchical_data[cluster_idx]["children"]
+        subcluster_idx = next((index for (index, d) in enumerate(subclusters) if d["name"] == subcluster), None)
+        if subcluster_idx is None:
+            subclusters.append({"name": subcluster, "children": []})
+            subcluster_idx = len(subclusters) - 1
+        
+        # Add page data to subcluster
+        subclusters[subcluster_idx]["children"].append({"name": page, "value": value})
+
+    return {"name": "root", "children": hierarchical_data}
+
+# Title
 st.title("Hierarchical Data Visualization")
 
-# Function to load the uploaded data
-def load_data(uploaded_file):
-    df = pd.read_csv(uploaded_file)
-    # Making column names lowercase for case insensitivity
-    df.columns = [col.lower() for col in df.columns]
-    return df
-
-# Upload widget
+# User upload of CSV
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+
 if uploaded_file:
     df = load_data(uploaded_file)
-
-    # Check if required columns are present
-    required_columns = ['cluster', 'subcluster', 'page', 'value']
-    if not all(col in df.columns for col in required_columns):
-        st.error("Uploaded CSV is missing one or more required columns: 'cluster', 'subcluster', 'page', 'value'")
+    if not columns_present(df, ["Parent", "Cluster", "Page Title", "Type"]):
+        st.error("Uploaded CSV is missing one or more required columns: 'Parent', 'Cluster', 'Page Title', 'Type'")
     else:
-        # Convert the dataframe into hierarchical data for the ForceDirectedTree
-        def df_to_hierarchy(df):
-            data = {}
-            for _, row in df.iterrows():
-                cluster = row['cluster']
-                subcluster = row['subcluster']
-                page = row['page']
-                value = row['value']
-
-                if cluster not in data:
-                    data[cluster] = {}
-                if subcluster not in data[cluster]:
-                    data[cluster][subcluster] = []
-
-                data[cluster][subcluster].append({"name": page, "value": value})
-
-            # Convert the dictionary to the format suitable for amCharts
-            result = []
-            for cluster, subclusters in data.items():
-                children = []
-                for subcluster, pages in subclusters.items():
-                    children.append({"name": subcluster, "children": pages})
-                result.append({"name": cluster, "children": children})
-            return result
-
         hierarchical_data = df_to_hierarchy(df)
+        fig = px.sunburst(hierarchical_data, path=['name', 'children', 'children', 'children'], values='value',
+                          color='name',
+                          color_discrete_map={
+                              "root": "lightgray",
+                              "Loopio": "#1f77b4",  # Adapt the colors based on the cluster names in the sample CSV
+                              # ... add more colors for other clusters if needed
+                          })
+        st.plotly_chart(fig)
 
-        # Embed the amCharts JavaScript for ForceDirectedTree.
-        st.markdown(f"""
-            <div id="chartdiv" style="width: 100%; height: 600px;"></div>
-            <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
-            <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
-            <script>
-                am4core.ready(function() {{
-                    am4core.useTheme(am4themes_animated);
-                    var chart = am4core.create("chartdiv", am4charts.ForceDirectedTree);
-                    var networkSeries = chart.series.push(new am4charts.ForceDirectedSeries())
+else:
+    st.write("Please upload a CSV file.")
 
-                    chart.data = {json.dumps(hierarchical_data)};
-
-                    networkSeries.dataFields.value = "value";
-                    networkSeries.dataFields.name = "name";
-                    networkSeries.dataFields.children = "children";
-                    networkSeries.nodes.template.tooltipText = "{name}:{value}";
-                    networkSeries.nodes.template.fillOpacity = 1;
-                    
-                    // Define colors based on depth
-                    networkSeries.nodes.template.adapter.add("fill", function(fill, target) {{
-                        if (target.dataItem.level == 0) {{
-                            return am4core.color("#003366");  // Dark Blue for Clusters
-                        }} else if (target.dataItem.level == 1) {{
-                            return am4core.color("#336699");  // Medium Blue for Subclusters
-                        }} else if (target.dataItem.level == 2) {{
-                            return am4core.color("#6699CC");  // Light Blue for Pages
-                        }}
-                        return fill;
-                    }});
-
-                }});
-
-            </script>
-        """, unsafe_allow_html=True)
