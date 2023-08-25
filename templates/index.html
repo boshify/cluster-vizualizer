@@ -18,10 +18,9 @@
 
         #chartdiv {
             width: 100%;
-            height: 800px;
+            height: 400px;
         }
 
-        /* Add a subtle glow around the new items to make them stand out */
         .new-item {
             filter: drop-shadow(0 0 50px #00FF00);
         }
@@ -40,7 +39,44 @@
         <div id="chartdiv"></div>
 
         <script>
-            {{js_code|safe}}
+            fetch('/get-data')
+            .then(response => response.json())
+            .then(data => {
+                am4core.ready(function() {
+                    var chart = am4core.create("chartdiv", am4plugins_forceDirected.ForceDirectedTree);
+                    chart.zoomable = true;
+                    var series = chart.series.push(new am4plugins_forceDirected.ForceDirectedSeries());
+                    series.data = [data];
+                    series.dataFields.value = "value";
+                    series.dataFields.name = "name";
+                    series.dataFields.children = "children";
+                    series.dataFields.collapsed = "off";
+                    series.nodes.template.tooltipText = "{name}: [bold]{value}[/]\nURL: {url}";
+                    series.nodes.template.label.text = "{name}";
+                    series.nodes.template.label.fill = am4core.color("#000");
+                    series.nodes.template.label.stroke = am4core.color("#FFF");
+                    series.nodes.template.label.strokeWidth = 0.8;
+                    series.fontSize = 14;
+                    series.maxLevels = 2;
+                    series.minRadius = am4core.percent(0.012);
+                    series.nodePadding = 5;
+                    series.manyBodyStrength = -30;
+                    series.nodes.template.label.hideOversized = false;
+                    series.nodes.template.label.truncate = false;
+                    series.nodes.template.events.on("inited", function(event) {
+                        var node = event.target;
+                        if (node.dataItem && node.dataItem.dataContext && node.dataItem.dataContext.type == "New") {
+                            var shadow = new am4core.DropShadowFilter();
+                            shadow.dx = 0;
+                            shadow.dy = 0;
+                            shadow.blur = 10;
+                            shadow.color = am4core.color("#00FF00");
+                            shadow.opacity = 0.8;
+                            node.filters.push(shadow);
+                        }
+                    });
+                });
+            });
         </script>
     </div>
 
