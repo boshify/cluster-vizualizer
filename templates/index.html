@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV to Chart</title>
+    <title>Cluster Visualizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="//cdn.amcharts.com/lib/4/core.js"></script>
     <script src="//cdn.amcharts.com/lib/4/charts.js"></script>
     <script src="//cdn.amcharts.com/lib/4/themes/animated.js"></script>
@@ -19,24 +21,29 @@
             height: 400px;
         }
 
+        /* Add a subtle glow around the new items to make them stand out */
         .new-item {
             filter: drop-shadow(0 0 50px #00FF00);
         }
     </style>
 </head>
+
 <body>
-    <form action="/" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <input type="submit" value="Upload">
-    </form>
 
-    <div id="chartdiv"></div>
+    <div class="container mt-4">
+        <h2>Upload CSV to Visualize Data</h2>
+        <form action="/" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".csv">
+            <input type="submit" value="Upload" class="btn btn-primary">
+        </form>
 
-    <script>
-        var data = {{ data|tojson }};
-        if (data) {
-            // ... [Your JavaScript code to create the amCharts visualization] ...
-        }
-    </script>
+        <div id="chartdiv"></div>
+
+        <script>
+            {{js_code|safe}}
+        </script>
+    </div>
+
 </body>
+
 </html>
