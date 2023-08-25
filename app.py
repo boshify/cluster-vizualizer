@@ -7,16 +7,25 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    data = None
     if request.method == 'POST':
         file = request.files['file']
-        if file:
-            data = process_file(file)
-    return render_template('index.html', data=data)
+        response = process_file(file)
+
+        # Handle error response
+        if isinstance(response, tuple) and response[1] == 400:
+            return response
 
 def process_file(file):
-    # Read the uploaded file directly
+    # Read the uploaded file into a DataFrame
     df = pd.read_csv(file)
+
+    # List of required columns
+    required_columns = ['Cluster', 'Subcluster', 'Page Title', 'Volume', 'Type', 'URL']
+
+    # Check for missing columns
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        return f"Error: The following columns are missing in the uploaded CSV: {', '.join(missing_columns)}", 400
     
     # Data processing
     hierarchy = {'name': 'Root', 'children': []}
