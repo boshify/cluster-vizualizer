@@ -18,5 +18,5 @@ ENV FLASK_APP=app.py
 ENV FLASK_RUN_HOST=0.0.0.0
 ENV FLASK_ENV=production
 
-# Run the application
-CMD ["flask", "run"]
+# Run the application using gunicorn
+CMD ["gunicorn", "app:app", "-b", "0.0.0.0:5000"]
